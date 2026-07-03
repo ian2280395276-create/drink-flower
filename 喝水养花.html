@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>喝水养花</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={theme:{extend:{colors:{cream:'#FDFBF7',ink:'#1a1a1a',soft:'#7a7a7a',faint:'#d4d0c8',warm:{50:'#faf8f5',100:'#f5f0e8',200:'#ebe3d5',300:'#d9ceba',400:'#c4b69f',500:'#a89878'}}}}}</script>
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",-apple-system,sans-serif;background:#FDFBF7;color:#1a1a1a;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.glass{background:rgba(255,255,255,0.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(0,0,0,0.05)}
+.plant-trans *{transition:fill 0.9s cubic-bezier(0.4,0,0.2,1),stroke 0.9s cubic-bezier(0.4,0,0.2,1),opacity 0.6s ease,transform 0.7s cubic-bezier(0.34,1.56,0.64,1)}
+@keyframes bloom-bounce{0%,100%{transform:scale(1)}30%{transform:scale(1.06)}60%{transform:scale(0.97)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes shimmer{0%,100%{opacity:0.3}50%{opacity:0.7}}
+.anim-bloom{animation:bloom-bounce 0.8s cubic-bezier(0.34,1.56,0.64,1)}
+.anim-float{animation:float 4s ease-in-out infinite}
+.anim-shimmer{animation:shimmer 2.5s ease-in-out infinite}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+function todayKey(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function timeNow(){const d=new Date();return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`}
+function daysInMonth(y,m){return new Date(y,m+1,0).getDate()}
+function dateKey(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+function hashStr(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return Math.abs(h)}
+function textToHue(t){return hashStr(t)%360}
+function hueHSL(h){return `hsl(${h},52%,62%)`}
+function hueSoft(h){return `hsl(${h},40%,78%)`}
+function hueDark(h){return `hsl(${h},45%,38%)`}
+function easeOut(t){return 1-Math.pow(1-Math.min(t,1),3)}
+
+const PLANTS=[
+  {id:'rose',name:'玫瑰',emoji:'🌹',stem:'#8a9a78'},
+  {id:'tulip',name:'郁金香',emoji:'🌷',stem:'#7a9a68'},
+  {id:'daisy',name:'雏菊',emoji:'🌼',stem:'#8a9a70'},
+  {id:'lily',name:'百合',emoji:'🪻',stem:'#6a8a68'},
+  {id:'lotus',name:'莲花',emoji:'🪷',stem:'#7a8a70'},
+  {id:'orchid',name:'兰花',emoji:'🌸',stem:'#7a9278'},
+  {id:'poppy',name:'虞美人',emoji:'💮',stem:'#8a9a68'},
+  {id:'peony',name:'牡丹',emoji:'🏵️',stem:'#789068'},
+];
+function pickPlant(dk){let h=0;for(let c of dk)h=((h<<5)-h+c.charCodeAt(0))|0;return PLANTS[Math.abs(h)%PLANTS.length].id}
+
+function BloomFlower({tid,cx,fy,s,sc,main,soft,dark}){
+  const els=[];
+  if(sc<0.3)return null;
+  switch(tid){
+    case 'rose':
+      for(let l=0;l<4;l++){const r=s*(0.35+l*0.2)*sc,n=5+l;for(let i=0;i<n;i++){const a=(i/n)*Math.PI*2+l*0.35,px=cx+Math.cos(a)*r*0.5,py=fy+Math.sin(a)*r*0.5-l*3;els.push(<ellipse key={`${l}-${i}`} cx={px} cy={py} rx={r*0.55} ry={r*0.8} fill={l%2?main:soft} stroke={dark} strokeWidth="0.5" opacity={0.75+l*0.06} transform={`rotate(${(i/n)*360+(l*15)} ${px} ${py})`}/>);}}
+      els.push(<circle key="c" cx={cx} cy={fy-3} r={s*0.25} fill="#fff9f0" opacity="0.7"/>);
+      break;
+    case 'tulip':
+      els.push(<path key="b" d={`M${cx},${fy-2} Q${cx-25},${fy-s*1.2} ${cx},${fy-s*1.3} Q${cx+25},${fy-s*1.2} ${cx},${fy-2}`} fill={soft} stroke={dark} strokeWidth="0.7" opacity="0.8"/>);
+      els.push(<path key="l" d={`M${cx},${fy} Q${cx-32},${fy-s*0.6} ${cx-20},${fy-s*1.1} Q${cx-12},${fy-s*0.5} ${cx},${fy-4}`} fill={main} stroke={dark} strokeWidth="0.7" opacity="0.85"/>);
+      els.push(<path key="r" d={`M${cx},${fy} Q${cx+32},${fy-s*0.6} ${cx+20},${fy-s*1.1} Q${cx+12},${fy-s*0.5} ${cx},${fy-4}`} fill={main} stroke={dark} strokeWidth="0.7" opacity="0.85"/>);
+      break;
+    case 'daisy':
+      for(let i=0;i<16;i++){const a=(i/16)*Math.PI*2,px=cx+Math.cos(a)*s*0.65*sc,py=fy+Math.sin(a)*s*0.65*sc;els.push(<ellipse key={i} cx={px} cy={py} rx={s*0.2*sc} ry={s*0.55*sc} fill={i%3?main:soft} stroke={dark} strokeWidth="0.4" opacity="0.8" transform={`rotate(${(i/16)*360} ${px} ${py})`}/>);}
+      els.push(<circle key="c1" cx={cx} cy={fy} r={s*0.32*sc} fill="#faf0d8" stroke={dark} strokeWidth="0.5"/>);
+      els.push(<circle key="c2" cx={cx} cy={fy} r={s*0.18*sc} fill={dark} opacity="0.3"/>);
+      break;
+    case 'lily':
+      for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2-Math.PI/2,px=cx+Math.cos(a)*s*0.25*sc,py=fy+Math.sin(a)*s*0.25*sc;els.push(<ellipse key={`p-${i}`} cx={px} cy={py} rx={s*0.25*sc} ry={s*0.85*sc} fill={i<3?main:soft} stroke={dark} strokeWidth="0.5" opacity="0.8" transform={`rotate(${(i/6)*360} ${px} ${py})`}/>);}
+      for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2-Math.PI/2;els.push(<circle key={`s-${i}`} cx={cx+Math.cos(a)*s*0.35*sc} cy={fy+Math.sin(a)*s*0.35*sc-s*0.3*sc} r="1.2" fill={dark} opacity="0.5"/>);}
+      els.push(<circle key="cc" cx={cx} cy={fy-s*0.1*sc} r={s*0.15*sc} fill="#faf0d8" opacity="0.8"/>);
+      break;
+    case 'lotus':
+      for(let i=0;i<8;i++){const a=(i/8)*Math.PI*2-Math.PI/2,px=cx+Math.cos(a)*s*0.3*sc,py=fy+Math.sin(a)*s*0.3*sc;els.push(<ellipse key={`o-${i}`} cx={px} cy={py} rx={s*0.3*sc} ry={s*0.65*sc} fill={soft} stroke={dark} strokeWidth="0.5" opacity="0.75" transform={`rotate(${(i/8)*360} ${px} ${py})`}/>);}
+      for(let i=0;i<5;i++){const a=(i/5)*Math.PI*2-Math.PI/2,px=cx+Math.cos(a)*s*0.12*sc,py=fy+Math.sin(a)*s*0.12*sc;els.push(<ellipse key={`i-${i}`} cx={px} cy={py} rx={s*0.18*sc} ry={s*0.4*sc} fill={main} stroke={dark} strokeWidth="0.4" opacity="0.85" transform={`rotate(${(i/5)*360} ${px} ${py})`}/>);}
+      els.push(<circle key="cc" cx={cx} cy={fy-2} r={s*0.2*sc} fill="#fffdf0" opacity="0.8"/>);
+      break;
+    case 'orchid':
+      els.push(<ellipse key="t" cx={cx} cy={fy-s*0.85*sc} rx={s*0.3*sc} ry={s*0.55*sc} fill={main} stroke={dark} strokeWidth="0.5" opacity="0.85"/>);
+      els.push(<ellipse key="sl" cx={cx-s*0.6*sc} cy={fy-s*0.2*sc} rx={s*0.25*sc} ry={s*0.5*sc} fill={soft} stroke={dark} strokeWidth="0.5" opacity="0.8" transform={`rotate(40 ${cx-s*0.6*sc} ${fy-s*0.2*sc})`}/>);
+      els.push(<ellipse key="sr" cx={cx+s*0.6*sc} cy={fy-s*0.2*sc} rx={s*0.25*sc} ry={s*0.5*sc} fill={soft} stroke={dark} strokeWidth="0.5" opacity="0.8" transform={`rotate(-40 ${cx+s*0.6*sc} ${fy-s*0.2*sc})`}/>);
+      els.push(<ellipse key="lip" cx={cx} cy={fy+s*0.25*sc} rx={s*0.35*sc} ry={s*0.4*sc} fill={main} stroke={dark} strokeWidth="0.6" opacity="0.9"/>);
+      els.push(<circle key="lipc" cx={cx} cy={fy+s*0.15*sc} r={s*0.12*sc} fill="#faf0d8" opacity="0.7"/>);
+      els.push(<ellipse key="col" cx={cx} cy={fy-s*0.15*sc} rx={s*0.12*sc} ry={s*0.18*sc} fill="#faf0d8" stroke={dark} strokeWidth="0.4"/>);
+      break;
+    case 'poppy':
+      for(let i=0;i<4;i++){const a=(i/4)*Math.PI*2-Math.PI/4,px=cx+Math.cos(a)*s*0.2*sc,py=fy+Math.sin(a)*s*0.2*sc-s*0.15*sc;els.push(<ellipse key={i} cx={px} cy={py} rx={s*0.7*sc} ry={s*0.75*sc} fill={i%2?main:soft} stroke={dark} strokeWidth="0.6" opacity="0.78" transform={`rotate(${i*90+15} ${px} ${py})`}/>);}
+      els.push(<circle key="c1" cx={cx} cy={fy-s*0.1*sc} r={s*0.28*sc} fill="#2a2a1a" opacity="0.7"/>);
+      els.push(<circle key="c2" cx={cx} cy={fy-s*0.1*sc} r={s*0.14*sc} fill="#4a4a2a" opacity="0.5"/>);
+      break;
+    case 'peony':
+      for(let l=0;l<5;l++){const n=6+l*2,r=s*(0.15+l*0.16)*sc;for(let i=0;i<n;i++){const a=(i/n)*Math.PI*2+l*0.25,px=cx+Math.cos(a)*r*0.5,py=fy+Math.sin(a)*r*0.5-l*2.5;els.push(<ellipse key={`${l}-${i}`} cx={px} cy={py} rx={r*0.55} ry={r*0.7} fill={l%2?main:soft} stroke={dark} strokeWidth="0.4" opacity={0.6+l*0.08} transform={`rotate(${(i/n)*360+(l*10)} ${px} ${py})`}/>);}}
+      els.push(<circle key="cc" cx={cx} cy={fy-3} r={s*0.2*sc} fill="#fffdf0" opacity="0.8"/>);
+      break;
+  }
+  return <g className={sc>0.9?'anim-bloom':''}>{els}</g>;
+}
+
+function PlantSVG({growth,hue,plantTypeId,size=260}){
+  const pt=PLANTS.find(p=>p.id===plantTypeId)||PLANTS[0];
+  const g=Math.min(growth,1.05),cx=140,soil=340;
+  const main=hueHSL(hue),soft=hueSoft(hue),dark=hueDark(hue);
+  const stemH=easeOut(g)*175,stemTop=soil-stemH;
+  const leafP=Math.max(0,(g-0.08)/0.92);
+  const bloomP=Math.max(0,(g-0.35)/0.65);
+  const bloomO=Math.max(0,(g-0.7)/0.3);
+
+  function Leaves(){
+    if(leafP<=0)return null;
+    const n=Math.floor(leafP*8)+1;
+    const items=[];
+    for(let i=0;i<n;i++){
+      const t=0.15+(i/(n+0.5))*0.75,ly=soil-t*stemH;
+      const lx=cx+(i%2===0?-1:1)*(2+t*8),ls=10+leafP*16;
+      const ang=(i%2===0?-35:35)-(leafP*15);
+      items.push(
+        <g key={i} transform={`translate(${lx},${ly}) rotate(${ang})`}>
+          <g className="anim-float" style={{animationDelay:`${i*0.1}s`}}>
+            <path d={`M0,0 C${ls*0.5},${-ls*0.3} ${ls*0.8},${-ls*1.1} ${ls*0.1},${-ls*1.6} C${ls*0.2},${-ls*1.2} 0,${-ls*0.5} 0,0 Z`} fill={soft} stroke={dark} strokeWidth="0.8" opacity="0.9"/>
+            <line x1="0" y1="0" x2={ls*0.05} y2={-ls*1.4} stroke={dark} strokeWidth="0.5" opacity="0.45"/>
+          </g>
+        </g>
+      );
+    }
+    return items;
+  }
+
+  function Bud(){
+    if(bloomP<=0.05||bloomO>0.7)return null;
+    const fy=stemTop,s=14+bloomP*8,bs=s*0.5;
+    return (
+      <g opacity={1-bloomO}>
+        <ellipse cx={cx} cy={fy-6} rx={bs*0.7} ry={bs*1.1} fill={soft} stroke={dark} strokeWidth="0.8"/>
+        <path d={`M${cx-bs*0.5},${fy-10} Q${cx},${fy-14} ${cx+bs*0.5},${fy-10}`} fill="none" stroke={dark} strokeWidth="0.6" opacity="0.6"/>
+        <ellipse cx={cx} cy={fy-3} rx={bs*0.4} ry={bs*0.3} fill={pt.stem} opacity="0.5"/>
+      </g>
+    );
+  }
+
+  function Sparkles(){
+    if(g<0.98)return null;
+    const pts=[[cx-38,stemTop-10],[cx+32,stemTop+10],[cx-20,stemTop-45],[cx+28,stemTop-30],[cx,stemTop-55]];
+    return <>
+      {pts.map(([sx,sy],i)=>(
+        <g key={`sp-${i}`} className="anim-shimmer" style={{animationDelay:`${i*0.4}s`}}>
+          <polygon points={`${sx},${sy-3} ${sx+1},${sy-1} ${sx+3},${sy} ${sx+1},${sy+1} ${sx},${sy+3} ${sx-1},${sy+1} ${sx-3},${sy} ${sx-1},${sy-1}`} fill={main} opacity="0.7"/>
+        </g>
+      ))}
+      {g>1&&<ellipse cx={cx+38} cy={stemTop+30} rx="3.5" ry="4.5" fill={main} opacity="0.5" className="anim-shimmer"/>}
+    </>;
+  }
+
+  return (
+    <svg viewBox="0 0 280 380" width={size} height={size*380/280} className="plant-trans" style={{overflow:'visible'}}>
+      <defs>
+        <filter id="sd"><feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#00000020"/></filter>
+        <filter id="gl"><feGaussianBlur stdDeviation="2.5"/></filter>
+      </defs>
+      <g filter="url(#sd)">
+        <path d="M106,336 L92,396 Q90,402 96,402 L184,402 Q190,402 188,396 L174,336 Z" fill="#e8e0d5" stroke="#d4ccc0" strokeWidth="1.5"/>
+        <rect x="98" y="328" width="84" height="10" rx="3" fill="#d4ccc0"/>
+        <ellipse cx="140" cy="334" rx="38" ry="7" fill="#c8b8a0"/>
+      </g>
+      {g>0.03&&<>
+        <path d={`M${cx},${soil} Q${cx-3},${soil-stemH*0.45} ${cx+1},${stemTop}`} fill="none" stroke={pt.stem} strokeWidth="3.5" strokeLinecap="round" opacity="0.8"/>
+        <path d={`M${cx},${soil} Q${cx-3},${soil-stemH*0.45} ${cx+1},${stemTop}`} fill="none" stroke={main} strokeWidth="1.8" strokeLinecap="round" opacity="0.35" filter="url(#gl)"/>
+      </>}
+      <Leaves/>
+      <Bud/>
+      {bloomO>0.3&&<BloomFlower tid={pt.id} cx={cx} fy={stemTop} s={14+bloomP*8} sc={bloomO} main={main} soft={soft} dark={dark}/>}
+      <Sparkles/>
+    </svg>
+  );
+}
+
+function MiniPlant({growth,hue,plantTypeId}){
+  const pt=PLANTS.find(p=>p.id===plantTypeId)||PLANTS[0];
+  const g=Math.min(growth,1),col=hueHSL(hue),soft=hueSoft(hue);
+  const sh=g>0.03?Math.max(6,g*28):0,bloom=g>0.7&&sh>12,leaves=g>0.2&&sh>8;
+  return (<svg viewBox="0 0 30 30" width="28" height="28"><path d="M12,24 L10,29 Q10,30 11,30 L19,30 Q20,30 20,29 L18,24 Z" fill="#e8e0d5" stroke="#d4ccc0" strokeWidth="0.5"/><rect x="11" y="23" width="8" height="1.5" rx="0.5" fill="#d4ccc0"/>{sh>2&&<line x1="15" y1="24" x2="15" y2={24-sh} stroke={pt.stem} strokeWidth="1.2" strokeLinecap="round"/>}{leaves&&<><ellipse cx="11" cy={24-sh*0.5} rx="4" ry="1.8" fill={soft} opacity="0.7" transform={`rotate(-30 11 ${24-sh*0.5})`}/><ellipse cx="19" cy={24-sh*0.6} rx="4" ry="1.8" fill={soft} opacity="0.7" transform={`rotate(30 19 ${24-sh*0.6})`}/></>}{bloom&&<circle cx="15" cy={24-sh-0.5} r={g>0.9?3.5:2.5} fill={col} opacity="0.8"/>}{g<0.03&&<circle cx="15" cy="23" r="1.2" fill="#c8b8a0"/>}</svg>);
+}
+
+function App(){
+  const [data,setData]=useState(()=>{try{return JSON.parse(localStorage.getItem('wp_v3final'))||{}}catch(e){return{}}});
+  const [settings,setSettings]=useState(()=>{try{return JSON.parse(localStorage.getItem('wp_v3final_s'))||{cupSize:250,dailyGoal:2000}}catch(e){return{cupSize:250,dailyGoal:2000}}});
+  const [note,setNote]=useState('');
+  const [calMonth,setCalMonth]=useState(new Date().getMonth());
+  const [calYear,setCalYear]=useState(new Date().getFullYear());
+  const [toast,setToast]=useState(null);
+  const [showSettings,setShowSettings]=useState(false);
+
+  const today=todayKey();
+  const entry=data[today]||{drinks:[],totalMl:0,plantType:pickPlant(today)};
+  const growth=Math.min(entry.totalMl/(settings.dailyGoal||2000),1.05);
+  const hue=entry.drinks?.length>0?entry.drinks[entry.drinks.length-1].hue:90;
+  const pt=PLANTS.find(p=>p.id===entry.plantType)||PLANTS[0];
+  const pct=Math.min(Math.round((entry.totalMl/(settings.dailyGoal||2000))*100),999);
+
+  useEffect(()=>{if(!data[today]||!data[today].plantType){setData(p=>{const n={...p};if(!n[today])n[today]={drinks:[],totalMl:0};n[today].plantType=pickPlant(today);return n})}},[today]);
+  useEffect(()=>{localStorage.setItem('wp_v3final',JSON.stringify(data))},[data]);
+  useEffect(()=>{localStorage.setItem('wp_v3final_s',JSON.stringify(settings))},[settings]);
+  useEffect(()=>{const c=new Date();c.setDate(c.getDate()-90);const ck=`${c.getFullYear()}-${String(c.getMonth()+1).padStart(2,'0')}-${String(c.getDate()).padStart(2,'0')}`;setData(p=>{const n={...p};let ch=false;for(const k of Object.keys(n)){if(k<ck&&k!==today){delete n[k];ch=true}}return ch?n:p})},[today]);
+
+  function toastMsg(m){setToast(m);setTimeout(()=>setToast(null),1800)}
+  function addWater(ml){
+    const t=note.trim()||'在生长';const h=textToHue(t);
+    setData(p=>{const n={...p};if(!n[today])n[today]={drinks:[],totalMl:0,plantType:pickPlant(today)};else n[today]={...n[today]};n[today].drinks=[...n[today].drinks,{time:timeNow(),ml,text:t,hue:h}];n[today].totalMl+=ml;return n});
+    setNote('');toastMsg(`+${ml}ml · 已记录`);
+  }
+  function undo(){setData(p=>{if(!p[today]||p[today].drinks.length===0)return p;const n={...p};n[today]={...n[today]};const r=n[today].drinks.pop();n[today].totalMl=Math.max(0,n[today].totalMl-r.ml);return n})}
+  function delDrink(idx){setData(p=>{if(!p[today])return p;const n={...p};n[today]={...n[today]};const d=[...n[today].drinks];const r=d.splice(idx,1)[0];n[today].drinks=d;n[today].totalMl=Math.max(0,n[today].totalMl-r.ml);return n})}
+
+  const stageLab=growth<0.03?'破土':growth<0.35?'抽枝':growth<0.7?'含苞':growth<1?'绽放':'满开';
+
+  return (
+    <div className="min-h-screen bg-cream">
+      {toast&&<div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 bg-ink/90 text-white text-sm rounded-full font-light tracking-wider">{toast}</div>}
+      <div className="max-w-lg mx-auto px-5 py-8 pb-16">
+        <header className="text-center mb-8 pt-2">
+          <h1 className="text-xl font-medium tracking-[0.3em] text-ink/90 mb-1">喝 水 养 花</h1>
+          <p className="text-xs text-soft tracking-widest">{pt.emoji} 今天种出了<span className="text-ink/70 font-medium ml-1">{pt.name}</span></p>
+        </header>
+
+        <div className="glass rounded-2xl p-6 mb-4 flex items-center justify-center min-h-[320px] relative overflow-hidden">
+          <div className="anim-float"><PlantSVG growth={growth} hue={hue} plantTypeId={entry.plantType} size={240}/></div>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] text-soft tracking-widest uppercase">{stageLab}</div>
+        </div>
+
+        <div className="grid grid-cols-5 gap-3 mb-4">
+          <div className="col-span-3 glass rounded-2xl p-4 flex flex-col gap-2.5">
+            <p className="text-[10px] text-soft tracking-widest uppercase mb-0.5">快捷饮水</p>
+            <div className="flex gap-2">
+              <button onClick={()=>addWater(settings.cupSize)} className="flex-1 py-3 rounded-xl bg-warm-100 hover:bg-warm-200 text-sm font-medium text-ink/80 tracking-wider transition-all active:scale-95">+{settings.cupSize}ml</button>
+            </div>
+            <button onClick={undo} className="text-[11px] text-soft hover:text-ink/60 tracking-wider transition-colors self-start">↩ 撤销上一杯</button>
+          </div>
+          <div className="col-span-2 glass rounded-2xl p-4 flex flex-col justify-between">
+            <p className="text-[10px] text-soft tracking-widest uppercase">今日饮水</p>
+            <div>
+              <p className="text-2xl font-light tracking-tight"><span className="font-medium">{entry.totalMl}</span><span className="text-sm text-soft ml-1">ml</span></p>
+              <div className="w-full h-1 bg-warm-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-700 ease-out" style={{width:`${Math.min(pct,100)}%`,background:`linear-gradient(90deg,${hueSoft(hue)},${hueHSL(hue)})`}}/>
+              </div>
+              <p className="text-[10px] text-soft mt-1 text-right">{pct}%</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass rounded-2xl p-4 mb-4">
+          <div className="flex gap-2 items-center">
+            <input type="text" value={note} onChange={e=>setNote(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&note.trim())addWater(settings.cupSize)}} placeholder="此刻的心情、歌名、在做的事…" className="flex-1 bg-transparent border-none outline-none text-sm text-ink/80 placeholder:text-soft/60 py-2 font-light tracking-wider"/>
+            <button onClick={()=>addWater(settings.cupSize)} className="shrink-0 w-10 h-10 rounded-xl bg-warm-100 hover:bg-warm-200 flex items-center justify-center transition-all active:scale-95">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-ink/60"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button onClick={()=>setShowSettings(true)} className="shrink-0 w-10 h-10 rounded-xl hover:bg-warm-50 flex items-center justify-center transition-all">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-soft"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="glass rounded-2xl p-5 mb-4">
+          <p className="text-[10px] text-soft tracking-widest uppercase mb-4">今 日 时 刻</p>
+          {(entry.drinks||[]).length===0?<p className="text-xs text-soft/60 text-center py-4 font-light">喝第一杯水，种下今天的种子</p>:(
+            <div className="flex flex-col gap-0">
+              {[...entry.drinks].reverse().map((d,i)=>{const ri=entry.drinks.length-1-i;return(
+                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-warm-50 last:border-0 group">
+                  <span className="text-[11px] text-soft/70 tabular-nums w-10 shrink-0">{d.time}</span>
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{background:hueHSL(d.hue)}}/>
+                  <span className="text-sm text-ink/75 flex-1 font-light truncate">{d.text}</span>
+                  <span className="text-[10px] text-soft/50 tabular-nums mr-1">{d.ml}ml</span>
+                  <button onClick={()=>delDrink(ri)} className="opacity-0 group-hover:opacity-40 hover:!opacity-100 text-soft text-xs transition-all">×</button>
+                </div>
+              )})}
+            </div>
+          )}
+        </div>
+
+        <div className="glass rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[10px] text-soft tracking-widest uppercase">往 日 回 顾</p>
+            <div className="flex items-center gap-3">
+              <button onClick={()=>{if(calMonth===0){setCalMonth(11);setCalYear(y=>y-1)}else setCalMonth(m=>m-1)}} className="text-soft hover:text-ink/60 text-xs transition-colors">‹</button>
+              <span className="text-xs text-ink/70 font-medium tracking-wider">{calYear}.{String(calMonth+1).padStart(2,'0')}</span>
+              <button onClick={()=>{if(calMonth===11){setCalMonth(0);setCalYear(y=>y+1)}else setCalMonth(m=>m+1)}} className="text-soft hover:text-ink/60 text-xs transition-colors">›</button>
+            </div>
+          </div>
+          <div className="grid grid-cols-7 gap-1 mb-1.5">
+            {['日','一','二','三','四','五','六'].map(d=><div key={d} className="text-center text-[10px] text-soft/50 py-1">{d}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-1.5">
+            {(()=>{
+              const dim=daysInMonth(calYear,calMonth),fd=new Date(calYear,calMonth,1).getDay(),cells=[];
+              for(let i=0;i<fd;i++)cells.push(<div key={`e-${i}`} className="aspect-square"/>);
+              for(let d=1;d<=dim;d++){
+                const dk=dateKey(calYear,calMonth,d),e=data[dk],isT=dk===today;
+                const g=e?Math.min(e.totalMl/(settings.dailyGoal||2000),1):0;
+                const h=e?.drinks?.length>0?e.drinks[e.drinks.length-1].hue:90;
+                const pid=e?.plantType||pickPlant(dk);
+                cells.push(<div key={d} className={`aspect-square rounded-lg flex flex-col items-center justify-center relative ${isT?'ring-1 ring-ink/10':''} ${e?'bg-warm-50/50':'bg-warm-50/20'} transition-all hover:bg-warm-100/50`}>{e?<MiniPlant growth={g} hue={h} plantTypeId={pid}/>:<span className="text-[10px] text-soft/30">·</span>}<span className={`text-[9px] mt-0.5 tabular-nums ${isT?'text-ink/70 font-medium':'text-soft/50'}`}>{d}</span></div>);
+              }
+              return cells;
+            })()}
+          </div>
+          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-warm-50">
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-warm-100"/><span className="text-[10px] text-soft/60">已记录</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-warm-50/30"/><span className="text-[10px] text-soft/60">未记录</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full ring-1 ring-ink/10"/><span className="text-[10px] text-soft/60">今天</span></div>
+          </div>
+        </div>
+      </div>
+
+      {showSettings&&(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/10 backdrop-blur-sm" onClick={e=>{if(e.target===e.currentTarget)setShowSettings(false)}}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-xs shadow-xl border border-warm-100">
+            <h3 className="text-sm font-medium tracking-widest text-ink/80 mb-5">设 置</h3>
+            <label className="block text-[11px] text-soft tracking-wider mb-1.5">每杯水量 (ml)</label>
+            <input type="number" value={settings.cupSize} onChange={e=>setSettings(s=>({...s,cupSize:Math.max(50,Math.min(1000,parseInt(e.target.value)||250))}))} className="w-full bg-warm-50 rounded-lg px-3 py-2.5 text-sm outline-none mb-4 font-light"/>
+            <label className="block text-[11px] text-soft tracking-wider mb-1.5">每日目标 (ml)</label>
+            <input type="number" value={settings.dailyGoal} onChange={e=>setSettings(s=>({...s,dailyGoal:Math.max(500,Math.min(5000,parseInt(e.target.value)||2000))}))} className="w-full bg-warm-50 rounded-lg px-3 py-2.5 text-sm outline-none mb-6 font-light"/>
+            <button onClick={()=>setShowSettings(false)} className="w-full py-2.5 bg-ink text-white rounded-xl text-sm tracking-wider font-light">完 成</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
